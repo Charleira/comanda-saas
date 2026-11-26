@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id             String          @id @default(cuid())
+  name           String
+  logoUrl        String?
+  cnpj           String?
+  email          String
+  phone          String?
+  status         OrgStatus       @default(TRIAL)
+  plan           String          @default("free")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  cards          Card[]
+  categories     Category[]
+  customers      Customer[]
+  events         Event[]
+  products       Product[]
+  recharges      Recharge[]
+  sales          Sale[]
+  stalls         Stall[]
+  stallOperators StallOperator[]
+  users          User[]
+
+  @@index([status])
+}
+
+model StallOperator {
+  id             String       @id @default(cuid())
+  stallId        String
+  userId         String
+  organizationId String
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  stall          Stall        @relation(fields: [stallId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@unique([stallId, userId])
+  @@index([stallId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+model User {
+  id               String          @id @default(cuid())
+  name             String
+  email            String
+  passwordHash     String
+  role             Role
+  organizationId   String
+  createdAt        DateTime        @default(now())
+  refreshTokens    RefreshToken[]
+  stallAssignments StallOperator[]
+  organization     Organization    @relation(fields: [organizationId], references: [id])
+
+  @@unique([email, organizationId])
+  @@index([organizationId])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Event {
+  id             String       @id @default(cuid())
+  name           String
+  organizationId String
+  active         Boolean      @default(true)
+  startDate      DateTime?
+  endDate        DateTime?
+  createdAt      DateTime     @default(now())
+  cards          Card[]
+  customers      Customer[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  recharges      Recharge[]
+  sales          Sale[]
+  stalls         Stall[]
+
+  @@index([organizationId])
+}
+
+model Stall {
+  id             String          @id @default(cuid())
+  name           String
+  color          String?
+  icon           String?
+  active         Boolean         @default(true)
+  eventId        String
+  organizationId String
+  products       Product[]
+  sales          Sale[]
+  event          Event           @relation(fields: [eventId], references: [id])
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  operators      StallOperator[]
+
+  @@index([eventId])
+  @@index([organizationId])
+}
+
+model Category {
+  id             String       @id @default(cuid())
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  products       Product[]
+
+  @@index([organizationId])
+}
+
+model Product {
+  id             String       @id @default(cuid())
+  name           String
+  description    String?
+  price          Decimal      @db.Decimal(10, 2)
+  available      Boolean      @default(true)
+  order          Int          @default(0)
+  stallId        String
+  categoryId     String?
+  organizationId String
+  category       Category?    @relation(fields: [categoryId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  stall          Stall        @relation(fields: [stallId], references: [id])
+  sales          Sale[]
+
+  @@index([stallId])
+  @@index([organizationId])
+}
+
+model Customer {
+  id             String       @id @default(cuid())
+  name           String
+  cpf            String?
+  phone          String?
+  notes          String?
+  eventId        String
+  organizationId String
+  cards          Card[]
+  event          Event        @relation(fields: [eventId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  recharges      Recharge[]
+  sales          Sale[]
+
+  @@index([eventId])
+  @@index([organizationId])
+}
+
+model Card {
+  id             String       @id @default(cuid())
+  nfcId          String       @unique
+  balance        Decimal      @default(0) @db.Decimal(10, 2)
+  active         Boolean      @default(true)
+  eventId        String
+  customerId     String?
+  organizationId String
+  customer       Customer?    @relation(fields: [customerId], references: [id])
+  event          Event        @relation(fields: [eventId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  recharges      Recharge[]
+  sales          Sale[]
+
+  @@index([eventId])
+  @@index([nfcId])
+  @@index([organizationId])
+}
+
+model Sale {
+  id             String       @id @default(cuid())
+  quantity       Int
+  unitPrice      Decimal      @db.Decimal(10, 2)
+  total          Decimal      @db.Decimal(10, 2)
+  canceled       Boolean      @default(false)
+  eventId        String
+  stallId        String
+  productId      String
+  customerId     String?
+  cardId         String
+  operatorId     String
+  createdAt      DateTime     @default(now())
+  organizationId String
+  card           Card         @relation(fields: [cardId], references: [id])
+  customer       Customer?    @relation(fields: [customerId], references: [id])
+  event          Event        @relation(fields: [eventId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  product        Product      @relation(fields: [productId], references: [id])
+  stall          Stall        @relation(fields: [stallId], references: [id])
+
+  @@index([eventId, createdAt])
+  @@index([stallId])
+  @@index([cardId])
+  @@index([organizationId])
+}
+
+model Recharge {
+  id             String       @id @default(cuid())
+  value          Decimal      @db.Decimal(10, 2)
+  eventId        String
+  cardId         String
+  customerId     String?
+  cashierId      String
+  createdAt      DateTime     @default(now())
+  organizationId String
+  card           Card         @relation(fields: [cardId], references: [id])
+  customer       Customer?    @relation(fields: [customerId], references: [id])
+  event          Event        @relation(fields: [eventId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([eventId, createdAt])
+  @@index([cardId])
+  @@index([organizationId])
+}
+
+model FinancialMovement {
+  id             String       @id @default(cuid())
+  type           MovementType
+  value          Decimal      @db.Decimal(10, 2)
+  organizationId String
+  eventId        String
+  cardId         String?
+  referenceId    String
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, eventId])
+  @@index([type])
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  CASHIER
+  OPERATOR
+}
+
+enum OrgStatus {
+  ACTIVE
+  BLOCKED
+  TRIAL
+}
+
+enum MovementType {
+  RECHARGE
+  SALE
+  REFUND
+  CANCELLATION
+  RETURN
+  CARD_REPLACEMENT
+}

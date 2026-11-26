@@ -1,0 +1,49 @@
+const KNOWN_ERRORS = new Set([
+  "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "INSUFFICIENT_BALANCE",
+  "CARD_NOT_FOUND", "PRODUCT_NOT_FOUND", "STALL_NOT_FOUND", "SALE_NOT_FOUND",
+  "PRODUCT_NOT_IN_STALL", "NFC_ALREADY_REGISTERED", "EMAIL_ALREADY_REGISTERED",
+  "CATEGORY_IN_USE", "CANNOT_DOWNGRADE_SELF", "CANNOT_DELETE_SELF",
+]);
+
+const STATUS_MAP: Record<string, number> = {
+  UNAUTHENTICATED: 401,
+  FORBIDDEN: 403,
+  ORGANIZATION_BLOCKED: 403,
+  OPERATOR_NOT_ASSIGNED_TO_STALL: 403,
+  NOT_FOUND: 404,
+  CARD_NOT_FOUND: 404,
+  PRODUCT_NOT_FOUND: 404,
+  STALL_NOT_FOUND: 404,
+  SALE_NOT_FOUND: 404,
+  EVENT_NOT_FOUND: 404,
+  ORGANIZATION_NOT_FOUND: 404,
+  INSUFFICIENT_BALANCE: 402,
+  PRODUCT_NOT_IN_STALL: 400,
+  USER_MUST_BE_OPERATOR: 400,
+  CARD_EVENT_MISMATCH: 400,
+  NFC_ALREADY_REGISTERED: 409,
+  NFC_ALREADY_LINKED_TO_ANOTHER_CUSTOMER: 409,
+  CARD_ALREADY_ACTIVE: 409,
+  CARD_ACTIVE_IN_ANOTHER_EVENT: 409,
+  EMAIL_ALREADY_REGISTERED: 409,
+  CATEGORY_IN_USE: 409,
+  CANNOT_DOWNGRADE_SELF: 409,
+  CANNOT_DELETE_SELF: 409,
+  ALREADY_ASSIGNED: 409,
+  EVENT_NOT_ACTIVE: 409,
+};
+
+export function handleApiError(err: any): { body: { error: string }; status: number } {
+  const message = err?.message ?? "UNKNOWN_ERROR";
+
+  if (message in STATUS_MAP) {
+    return { body: { error: message }, status: STATUS_MAP[message] };
+  }
+
+  if (err?.name === "ZodError") {
+    return { body: { error: "DADOS_INVALIDOS" }, status: 400 };
+  }
+
+  console.error("[API_ERROR]", err);
+  return { body: { error: "Erro interno do servidor" }, status: 500 };
+}
